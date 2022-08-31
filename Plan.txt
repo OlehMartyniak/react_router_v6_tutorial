@@ -1,0 +1,237 @@
+Source video:
+https://www.youtube.com/watch?v=59IXY5IDrBA&ab_channel=freeCodeCamp.org
+
+Встановимо пакет:
+npm i react-router-dom
+
+Огорнути Арр компонент в index.js в BrowserRouter:
+
+<BrowserRouter>
+    <App />
+</BrowserRouter>
+
+Всюди, де ми хочемо встановлювати посилання, потрібно створювати Routes, всередині яких будуть власне елементи Route, які
+будуть зберігати шлях до компонента (path) і власне посилання на сам компонент (element):
+
+<Routes>
+  <Route path="/" element={<Home/>}/>
+  <Route path="about" element={<About/>}/>
+  <Route path="products" element={<Products/>}/>
+</Routes>
+
+(!таким чином path - це url, a element - це те що ми будемо рендерити!)
+
+Створимо папку pages і там компоненти Home/Products/About
+
+Коли ми переходимо, наприклад, на сторінку Home, і нам потрібно звідти перейти на іншу (наприклад About), 
+тоді в Home ми створюємо лінк на необхідну сторінку (уже додану в Route):
+
+<Link to='/about' className='btn'/>
+
+Також можна додати "запобіжник" на випадок, якщо шлях виявиться неправильним:
+
+<Route path="*" element={<Error/>}/>
+
+Якщо ми маємо вкладені роути ("nested routes"), тоді для їх відображення в батьківському компоненті
+потрібно викликати компонент <Outlet/>, який буде відображати ці вкладені шляхи:
+
+const Home = () => {
+  return (
+    <section className="section">
+      <h2>Home</h2>
+->    <Outlet/>
+    </section>
+  )
+}
+
+Так як ми хочемо мати посилання на сторінки в вернхньому меню, створимо Navbar, куди передамо лінки на 
+сторінки Home/About/Products і викличемо Navbar на сторінці Home:
+
+  Navbar:
+
+  const Navbar = () => {
+  return (
+    <nav className="navbar">
+        <Link to="/">Home</Link>
+        <Link to="/about">About</Link>
+        <Link to="/products">Products</Link>
+    </nav>
+  )
+  }
+
+  Home:
+
+  const Home = () => {
+  return (
+    <div>
+      <Navbar/>
+      <Outlet/>
+    </div>
+  )
+  }
+
+Однак нам потрібно щоб Home була окремою сторінкою, а не містила посилання. Тому потрібно створити в головному
+роуті посилання на SharedLayout (де буде викликатись Navbar i Outlet), а Home зробити першою сторінкою
+серед вкладених роутів. І щоб URL автоматично копіював посилання головного роута (SharedLayout), і таким
+чином Home була рандомною сторінкою, потрібно додавати їй не шлях (path), a index :
+
+<Routes>
+  <Route path="/" element={<SharedLayout/>}>
+    <Route index element={<Home/>}/>
+    <Route path="about" element={<About/>}/>
+    <Route path="products" element={<Products/>}/>
+    <Route path="*" element={<Error/>}/>
+  </Route>
+</Routes>
+
+(!Таким чином Home буде окремою сторінкою, однак url буде дорівнювати "/", як у головного роута!)
+
+Щоб трохи додати стилю, зокрема коли ми нажимаємо на певну сторінку, її назва (лінк) в Navbar змінювалась,
+react-router-dom дозволяє заміть <Link/> викликати <NavLink/>, куди в стиль можна передати властивість
+"isActive", яка даватиме можливість викликати функцію щоб в залежності від того, відкрита сторінка, чи ні,
+змінювати колір:
+
+const Navbar = () => {
+  return (
+    <nav className="navbar">
+        <NavLink to="/" className={({isActive}) => isActive ? "link active" : "link"}>Home</NavLink>
+        <NavLink to="/about" className={({isActive}) => isActive ? "link active" : "link"}>About</NavLink>
+        <NavLink to="/products" className={({isActive}) => isActive ? "link active" : "link"}>Products</NavLink>
+    </nav>
+  )
+}
+
+Тепер допрацюємо сторінку SingleProduct, куди ми переходимо з сторінки Products і висвітлюємо інформацію 
+про обраний продукт. Для цього створимо роут для неї:
+
+<Route path="products/:productId" element={<SingleProduct/>}/>
+
+На сторінці SingleProduct, щоб прив'язати наш URL - productId до змінної, потрібно скористатись хуком
+useParams:
+
+const SingleProduct = () => {
+
+  const { productId } = useParams();
+
+  return (
+    <section className="sectionProduct">
+      <h4>{productId}</h4>
+      <Link to="/products">back to products</Link>
+    </section>
+  );
+};
+
+Зараз виведемо всі наші продукти, отримані з масиву products (..//data/data.js) на сторінці Products.js:
+
+const Products = () => {
+  return (
+    <section className="section">
+        <h2>Products</h2>
+        <div className="products">
+          {products.map((product) => {
+            return (
+              <article key={product.id}>
+                <h5>{product.name}</h5>
+                <Link to={`/products/${product.id}`}>more info</Link>
+              </article>
+            )
+          })}
+        </div>
+    </section>
+  )
+}
+
+Далі по лінку ми переходимо на сторінку SingleProduct, де і опишемо його:
+
+import products from "..//data/data.js";
+
+const SingleProduct = () => {
+
+  const { productId } = useParams();
+  const product = products.find((product) => product.id === productId);
+
+  return (
+    <section className="sectionProduct">
+      <h5>{product.name}</h5>
+      <img src={product.image} name={product.name}/>
+      <Link to="/products">back to products</Link>
+    </section>
+  );
+};
+
+Тепер створимо  захищені шляхи, тобто такі, які доступні для автентифікованих користувачів
+В Арр створимо useState для user: 
+
+const [user,setUser] = useState(null);
+
+Також створимо 2 компоненти - Dashboard i Login і роути для них:
+
+<Route path="login" element={<Login setUser={setUser}/>}/>
+<Route path="dashboard" element={<Dashboard user={user}/>}/>
+
+І звісно викличемо наш Login в NavBar з допомогою NavLink:
+
+<NavLink to="/login" className={({isActive}) => isActive ? "link active" : "link"}>Login</NavLink>
+
+Тепер заповнимо сторінку Login; нам потрібні будуть дві змінні, які прийматимуть з форми name i email і записуватимуть їх
+(useState) і функція handleSumit, яка попереджуватиме перезавантаження сторінки, перевірятиме заповненість форми, і якщо
+значення name i email передані, то з допомогою хука useNavigate при логінації перенаправлятиме на сторінку Dashboard:
+
+const Login = ({setUser}) => {
+
+    const [name,setName] = useState("");
+    const [email,setEmail] = useState("");
+
+    const navigate = useNavigate();
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!name || !email) return;
+        setUser({ name:name, email:email});
+        navigate("/dashboard")
+    };
+
+  return (
+    <section>
+        <form className="form" onSubmit={handleSubmit}>
+            <h5>login</h5>
+            <div className="form-row">
+                <label htmlFor="name" className="form-label">name</label>
+                <input type="text" className="form-input" id="name" value={name} onChange={(e)=>setName(e.target.value)}/>
+            </div>
+            <div className="form-row">
+                <label htmlFor="email" className="form-label">email</label>
+                <input type="email" className="form-input" id="email" value={email} onChange={(e)=>setEmail(e.target.value)}/>
+            </div>
+            <button type="submit" className="btn btn-block">login</button>
+        </form>
+    </section>
+  )
+}
+
+Тепер створимо захищений роут (ProtectedRout); для цього створимо сторінку ProtectedRout і обгорнемо нею ту сторінку, яка
+має бути захищена; для перевірки ми будемо передавати user, і якщо він існує, то тільки тоді будемо відображати Dashboard:
+
+<Route path="dashboard" element={<ProtectedRoute user={user}><Dashboard user={user}/></ProtectedRoute>}/>
+
+І пропишемо логіку ProtectedRoute:
+
+import { Navigate } from "react-router-dom";
+
+const ProtectedRoute = ({children,user}) => {
+    if (!user) {
+        return <Navigate to="/"/>
+    }
+    return children
+}
+
+(!Якщо user не існує, тобто ми не зареєструвались, то з доп. Navigate нас поверне на початкову сторінку,
+а якщо існує, то поверне елемент children, що в нашому випадку Dashboard - вкладений роут!)
+
+
+
+
+
+
+
+
